@@ -21,6 +21,7 @@ library
                      , exceptions
                      , http-types
                      , mtl
+                     , servant
                      , servant-server
                      , text
   default-language:    Haskell2010

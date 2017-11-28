@@ -1,10 +1,15 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 
 module Servant.Exception
   ( ToServantErr(..)
+  , toServantErr
+  , toServantErrJSON
+  , toServantErrPlain
   , ServantException
   , toServantException
   , fromServantException
@@ -16,43 +21,49 @@ module Servant.Exception
 
 import Control.Monad.Catch       (Exception (..), MonadCatch, SomeException, catch, throwM)
 import Control.Monad.Error.Class (MonadError (..))
-import Data.Aeson                (ToJSON (..), encode, object, (.=))
+import Data.Aeson                (ToJSON (..), object, (.=), encode)
+import Data.Proxy                (Proxy (..))
 import Data.String               (fromString)
 import Data.Text                 (Text)
 import Data.Typeable             (Typeable, cast, typeOf)
-import Network.HTTP.Types.Status (Status (..))
+import Network.HTTP.Types        (Header, Status (..))
 import Servant                   (ServantErr (..))
+import Servant.API.ContentTypes  (JSON, MimeRender (..), PlainText)
 
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
 
--- * A generic servant error encoding
+-- * Content-type aware servant error encoding
 
--- | Class for easy exception handling in route handlers.
-class (Typeable e, Show e, ToJSON e) => ToServantErr e where
+class (Typeable e, Show e) => ToServantErr e where
   status :: e -> Status
 
   message :: e -> Text
   message = fromString . show
 
-  -- TODO(SN): how to incorporate content-type?
-  -- mimeRender (Proxy :: Proxy JSON) e
-  toServantErr :: e -> ServantErr
-  toServantErr e = ServantErr { errHTTPCode = statusCode $ status e
-                              , errReasonPhrase = reasonPhrase $ status e
-                              , errBody = encode $ object [ "type" .= errorType
-                                                          , "error" .= toJSON e
-                                                          , "message" .= message e
-                                                          ]
-                              , errHeaders = []
-                              }
-   where
-    reasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage
-    errorType = show $ typeOf e
+  headers :: e -> [Header]
+  headers _ = []
+
+toServantErr :: (MimeRender ct e, ToServantErr e) => Proxy ct -> e -> ServantErr
+toServantErr ct e = ServantErr { errHTTPCode = statusCode $ status e
+                               , errReasonPhrase = reasonPhrase $ status e
+                               , errBody = mimeRender ct e
+                               , errHeaders = headers e
+                               }
+ where
+  reasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage
+
+toServantErrJSON :: (MimeRender JSON e, ToServantErr e) => e -> ServantErr
+toServantErrJSON = toServantErr (Proxy :: Proxy JSON)
+
+toServantErrPlain :: (MimeRender PlainText e, ToServantErr e) => e -> ServantErr
+toServantErrPlain = toServantErr (Proxy :: Proxy PlainText)
 
 -- * Servant exception handling
 
-data ServantException = forall e. (Exception e, ToServantErr e) => ServantException e
+-- | A root exception type specifically targeted for servant as it can be
+-- converted to a @ServantErr@ with content-type @JSON@ or @PlainText@.
+data ServantException = forall e. (Exception e, ToJSON e, ToServantErr e) => ServantException e
                       deriving (Typeable)
 
 instance Show ServantException where
@@ -60,24 +71,32 @@ instance Show ServantException where
 
 instance Exception ServantException
 
-instance ToJSON ServantException where
-  toJSON (ServantException e) = toJSON e
+instance MimeRender JSON ServantException where
+  mimeRender _ (ServantException e) = encode $ object [ "type" .= errorType
+                                                      , "message" .= message e
+                                                      , "error" .= toJSON e
+                                                      ]
+   where
+    errorType = show $ typeOf e
+
+instance MimeRender PlainText ServantException where
+  mimeRender ct = mimeRender ct . displayException
 
 instance ToServantErr ServantException where
   status (ServantException e) = status e
-  toServantErr (ServantException e) = toServantErr e
+  message (ServantException e) = message e
 
-toServantException :: (Exception e, ToServantErr e) => e -> SomeException
+toServantException :: (Exception e, ToJSON e, ToServantErr e) => e -> SomeException
 toServantException = toException . ServantException
 
 fromServantException :: Exception e => SomeException -> Maybe e
 fromServantException x = fromException x >>= \(ServantException e) -> cast e
 
--- * Catch all @ServantException@ and convert them to @ServantErr@ using @ToServantErr@.
+-- | Catch all @ServantException@ and convert them to @ServantErr@ using @toServantErrJSON@.
 handleServantExceptions :: (MonadCatch m, MonadError ServantErr m) => m a -> m a
-handleServantExceptions = handleServantExceptionsWith toServantErr
+handleServantExceptions = handleServantExceptionsWith toServantErrJSON
 
--- * Catch all @ServantException@ and convert them to @ServantErr@ using given function.
+-- | Catch all @ServantException@ and convert them to @ServantErr@ using given function.
 handleServantExceptionsWith :: (MonadCatch m, MonadError ServantErr m)
                             => (ServantException -> ServantErr) -> m a -> m a
 handleServantExceptionsWith f a = a `catch` \(e :: ServantException) -> throwError $ f e
