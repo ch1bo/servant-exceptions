@@ -1,12 +1,17 @@
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE PolyKinds                 #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeOperators             #-}
 
 module Servant.Exception
-  ( ToServantErr(..)
+  ( Throws
+  , ToServantErr(..)
   , toServantErr
   , toServantErrJSON
   , toServantErrPlain
@@ -21,17 +26,29 @@ module Servant.Exception
 
 import Control.Monad.Catch       (Exception (..), MonadCatch, SomeException, catch, throwM)
 import Control.Monad.Error.Class (MonadError (..))
-import Data.Aeson                (ToJSON (..), object, (.=), encode)
+import Data.Aeson                (ToJSON (..), encode, object, (.=))
 import Data.Proxy                (Proxy (..))
 import Data.String               (fromString)
 import Data.Text                 (Text)
 import Data.Typeable             (Typeable, cast, typeOf)
+import GHC.TypeLits              (Nat)
 import Network.HTTP.Types        (Header, Status (..))
-import Servant                   (ServantErr (..))
+import Servant                   hiding (Header)
 import Servant.API.ContentTypes  (JSON, MimeRender (..), PlainText)
 
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
+
+-- * Type level annotated exception handling
+
+data Throws
+
+instance HasServer (Verb mt st ct a) context =>
+         HasServer (Throws :> Verb (mt :: k) (st :: Nat) (ct :: [*]) (a :: *)) context where
+  type ServerT (Throws :> Verb mt st ct a) m =
+       ServerT (Verb mt st ct a) m
+
+  route _ ctx del = route (Proxy :: Proxy (Verb mt st ct a)) ctx (handleServantExceptions <$> del)
 
 -- * Content-type aware servant error encoding
 

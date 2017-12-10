@@ -5,8 +5,8 @@
 
 module Main where
 
-import Servant.Exception (Exception (..), ToServantErr (..), fromServantException,
-                          handleServantExceptions, toServantException)
+import Servant.Exception (Exception (..), Throws, ToServantErr (..), fromServantException,
+                          toServantException)
 
 import Control.Monad.Catch       (MonadThrow (..))
 import Control.Monad.IO.Class    (liftIO)
@@ -40,7 +40,7 @@ instance ToServantErr UsersError where
 type API = "api" :> "users" :> UsersAPI
 
 type UsersAPI = Get '[JSON] [User]
-                :<|> Capture "name" Text :> Get '[JSON] User
+                :<|> Capture "name" Text :> Throws :> Get '[JSON] User
 
 server :: MonadThrow m => ServerT API m
 server = getUsers
@@ -56,7 +56,7 @@ getUser n
   | otherwise = throwM UserNotFound
 
 nt :: IO :~> Handler
-nt = NT (handleServantExceptions . liftIO)
+nt = NT liftIO
 
 main :: IO ()
 main =
