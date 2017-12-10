@@ -23,10 +23,11 @@ import qualified Data.Text as Text
 
 type API = "api" :> "users" :> UsersAPI
 
--- TODO(SN): relocatable Throws (:> api), (:<|>)
-type UsersAPI = Get '[JSON] [User]
-                :<|> Capture "name" Text :> Throws UsersError :> Get '[PlainText, JSON] User
-                :<|> ReqBody '[JSON] User :> Throws UsersError :> Post '[JSON] ()
+type UsersAPI = Throws UsersError :> (
+  Get '[JSON] [User]
+  :<|> Capture "name" Text :> Get '[PlainText, JSON] User
+  :<|> ReqBody '[JSON] User :> Post '[JSON] ()
+  )
 
 newtype User = User Text
              deriving (Eq, Show, Generic)

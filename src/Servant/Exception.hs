@@ -9,6 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 module Servant.Exception
   ( Throws
@@ -42,10 +43,23 @@ import Servant.Server.Internal.RoutingApplication (Delayed (..))
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
 
+-- * Conversion type class
+
+class (Typeable e, Show e) => ToServantErr e where
+  status :: e -> Status
+
+  message :: e -> Text
+  message = fromString . show
+
+  headers :: e -> [Header]
+  headers _ = []
+
 -- * Type level annotated exception handling
 
 data Throws (e :: *)
 
+-- | Main @HasServer@ instance for @Throws e@. Catches exceptions of type @e@ in
+-- the upstream server and encodes them using @ToServantErr@ and @MimeRender@.
 instance ( Exception e
          , ToServantErr e
          , AllMimeRender ct e
@@ -71,14 +85,23 @@ instance ( Exception e
                             , errHeaders = (hContentType, h) : headers e
                             }
 
-class (Typeable e, Show e) => ToServantErr e where
-  status :: e -> Status
+-- | Push @Throws@ further "upstream".
+instance HasServer (api :> Throws e :> upstream) context =>
+         HasServer (Throws e :> api :> upstream) context where
 
-  message :: e -> Text
-  message = fromString . show
+  type ServerT (Throws e :> api :> upstream) m =
+       ServerT (api :> Throws e :> upstream) m
 
-  headers :: e -> [Header]
-  headers _ = []
+  route _ = route (Proxy :: Proxy (api :> Throws e :> upstream))
+
+-- | Transitive application of @Throws@ on @(:<|>)@.
+instance HasServer (Throws e :> api1 :<|> Throws e :> api2) context =>
+         HasServer (Throws e :> (api1 :<|> api2)) context where
+
+  type ServerT (Throws e :> (api1 :<|> api2)) m =
+       ServerT (Throws e :> api1 :<|> Throws e :> api2) m
+
+  route _ = route (Proxy :: Proxy (Throws e :> api1 :<|> Throws e :> api2))
 
 -- * Exception utilities
 
