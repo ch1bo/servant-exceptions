@@ -1,14 +1,16 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module Main where
 
-import Control.Monad.Catch       (MonadThrow (..), MonadCatch)
+import Control.Monad.Catch       (MonadCatch, MonadThrow (..))
 import Control.Monad.IO.Class    (liftIO)
 import Data.Aeson
 import Data.Text                 (Text)
+import Data.Typeable             (typeOf)
 import GHC.Generics
 import Network.HTTP.Types.Status
 import Network.Wai.Handler.Warp
@@ -17,18 +19,24 @@ import Servant.Exception         (Exception (..), Throws, ToServantErr (..), map
 
 import qualified Data.Text as Text
 
+-- * Example types
+
 type API = "api" :> "users" :> UsersAPI
 
 -- TODO(SN): relocatable Throws (:> api), (:<|>)
 type UsersAPI = Get '[JSON] [User]
-                :<|> Capture "name" Text :> Throws UsersError :> Get '[JSON] User
+                :<|> Capture "name" Text :> Throws UsersError :> Get '[PlainText, JSON] User
                 :<|> ReqBody '[JSON] User :> Throws UsersError :> Post '[JSON] ()
 
 newtype User = User Text
              deriving (Eq, Show, Generic)
 
 instance FromJSON User
+
 instance ToJSON User
+
+instance MimeRender PlainText User where
+  mimeRender ct = mimeRender ct . show
 
 -- | Erros occurring at the @UsersAPI@, which can be converted to @ServantErr@
 -- via @ToServantErr@.
@@ -49,9 +57,15 @@ instance ToServantErr UsersError where
 
   -- TODO(SN): not used right now, default MimeRender?
   message InternalError = "Something bad happened internally"
+  message e = Text.pack $ show e
 
 instance ToJSON UsersError where
-  toJSON = toJSON . show
+  toJSON e = object [ "type" .= show (typeOf e)
+                    , "message" .= message e
+                    ]
+
+instance MimeRender PlainText UsersError where
+  mimeRender ct = mimeRender ct . show
 
 -- | An example backend error type, which knows nothing about HTTP status codes
 -- or content type encodings.
@@ -60,6 +74,8 @@ data DatabaseError = QueryError
                    deriving (Show)
 
 instance Exception DatabaseError
+
+-- * Example server
 
 server :: MonadCatch m => ServerT API m
 server = getUsers
