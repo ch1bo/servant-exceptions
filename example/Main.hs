@@ -47,6 +47,7 @@ instance ToServantErr UsersError where
   status BadUser = status400
   status InternalError = status500
 
+  -- TODO(SN): not used right now, default MimeRender?
   message InternalError = "Something bad happened internally"
 
 instance ToJSON UsersError where
