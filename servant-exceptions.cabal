@@ -1,17 +1,17 @@
-name:                servant-exceptions
-version:             0.1.0
--- synopsis:
--- description:
-homepage:            https://github.com/ch1bo/servant-exceptions#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Sebastian Nagel
-maintainer:          sebastian.nagel@ncoding.at
-copyright:           2017 Sebastian Nagel
-category:            Web
-build-type:          Simple
-extra-source-files:  README.md
-cabal-version:       >=1.10
+name:                  servant-exceptions
+version:               0.1.0
+synopsis:              Extensible exceptions for servant APIs
+homepage:              https://github.com/ch1bo/servant-exceptions#readme
+license:               BSD3
+license-file:          LICENSE
+author:                Sebastian Nagel
+maintainer:            sebastian.nagel@ncoding.at
+copyright:             2017 Sebastian Nagel
+category:              Web
+build-type:            Simple
+extra-source-files:    CHANGELOG.md
+                     , README.md
+cabal-version:         >=1.10
 
 library
   hs-source-dirs:      src
