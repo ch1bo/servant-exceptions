@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 - UNRELEASED
+## 0.1.1 - 2018-01-23
 
  * Add support for `servant-0.12`.
 
