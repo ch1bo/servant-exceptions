@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                       #-}
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
@@ -65,6 +66,7 @@ instance ( Exception e
          , AllMimeRender ct e
          , HasServer (Verb mt st ct a) context
          ) => HasServer (Throws e :> Verb (mt :: k) (st :: Nat) (ct :: [*]) (a :: *)) context where
+
   type ServerT (Throws e :> Verb mt st ct a) m =
        ServerT (Verb mt st ct a) m
 
@@ -85,6 +87,10 @@ instance ( Exception e
                             , errHeaders = (hContentType, h) : headers e
                             }
 
+#if MIN_VERSION_servant_server(0,12,0)
+  hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (Verb mt st ct a))
+#endif
+
 -- | Push @Throws@ further "upstream".
 instance HasServer (api :> Throws e :> upstream) context =>
          HasServer (Throws e :> api :> upstream) context where
@@ -94,6 +100,10 @@ instance HasServer (api :> Throws e :> upstream) context =>
 
   route _ = route (Proxy :: Proxy (api :> Throws e :> upstream))
 
+#if MIN_VERSION_servant_server(0,12,0)
+  hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (api :> Throws e :> upstream))
+#endif
+
 -- | Transitive application of @Throws@ on @(:<|>)@.
 instance HasServer (Throws e :> api1 :<|> Throws e :> api2) context =>
          HasServer (Throws e :> (api1 :<|> api2)) context where
@@ -102,6 +112,10 @@ instance HasServer (Throws e :> api1 :<|> Throws e :> api2) context =>
        ServerT (Throws e :> api1 :<|> Throws e :> api2) m
 
   route _ = route (Proxy :: Proxy (Throws e :> api1 :<|> Throws e :> api2))
+
+#if MIN_VERSION_servant_server(0,12,0)
+  hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (Throws e :> api1 :<|> Throws e :> api2))
+#endif
 
 -- * Exception utilities
 
