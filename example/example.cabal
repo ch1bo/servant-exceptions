@@ -22,6 +22,7 @@ executable example
                      , http-types
                      , servant-server
                      , servant-exceptions
+                     , servant-exceptions-server
                      , text
                      , warp
   default-language:    Haskell2010
