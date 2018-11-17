@@ -21,9 +21,9 @@ library
                      , http-media
                      , http-types
                      , mtl
-                     , servant
+                     , servant >= 0.11
                      , servant-exceptions
-                     , servant-server
+                     , servant-server >= 0.11
                      , text
                      , wai
   default-language:    Haskell2010
