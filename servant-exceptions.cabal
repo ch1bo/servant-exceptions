@@ -22,7 +22,7 @@ library
                      , http-media
                      , http-types
                      , mtl
-                     , servant
+                     , servant >= 0.11
                      , servant-server
                      , text
                      , wai
