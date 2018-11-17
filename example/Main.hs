@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -97,8 +98,8 @@ postUser (User n)
   | Text.length n < 3 = throwM BadUser
   | otherwise = throwM QueryError
 
-nt :: IO :~> Handler
-nt = NT (mapException databaseErrors . liftIO)
+nt :: IO a -> Handler a
+nt = mapException databaseErrors . liftIO
  where
   databaseErrors :: DatabaseError -> UsersError
   databaseErrors _ = InternalError
@@ -107,4 +108,8 @@ main :: IO ()
 main =
   run 8000
   . serve (Proxy :: Proxy API)
-  $ enter nt server
+#if MIN_VERSION_servant_server(0,12,0)
+  $ hoistServer (Proxy :: Proxy API) nt server
+#else
+  $ enter (NT nt) server
+#endif
