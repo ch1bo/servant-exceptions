@@ -1,4 +1,4 @@
-# servant-exceptions
+# servant-exceptions [![Build Status](https://travis-ci.org/ch1bo/servant-exceptions.svg?branch=master)](https://travis-ci.org/ch1bo/servant-exceptions)
 Servant servers typically run their handlers in some form of `IO`. Either directly in the builtin `Handler` monad or a custom monad transformer on top it. When APIs fail, one would typically use the `MonadError ServantError` instance via `throwError` to create an error response of type `ServantErr`.
 
 This approach has two problems:
