@@ -33,12 +33,12 @@ import Data.String                                (fromString)
 import Data.Text                                  (Text)
 import Data.Typeable                              (Typeable, cast, typeOf)
 import GHC.TypeLits                               (Nat)
-import Network.HTTP.Media                         (mapAcceptMedia)
+import Network.HTTP.Media                         (mapAccept, matchAccept, renderHeader)
 import Network.HTTP.Types                         (Header, Status (..), hAccept, hContentType)
 import Network.Wai                                (requestHeaders)
 import Servant                                    hiding (Header)
-import Servant.API.ContentTypes                   (AllMimeRender (..), JSON, MimeRender (..),
-                                                   PlainText)
+import Servant.API.ContentTypes                   (AllMimeRender, JSON, MimeRender (..), PlainText,
+                                                   allMime, allMimeRender)
 import Servant.Server.Internal.RoutingApplication (Delayed (..))
 
 import qualified Data.Text          as Text
@@ -80,11 +80,13 @@ instance ( Exception e
               }
 
     handleException ct h a = a `catch` \(e :: e) -> do
-      let body = mapAcceptMedia (allMimeRender ct e) h
+      -- AllMime and AllMimeRender should prevent @Nothing@
+      let contentType = fromMaybe "" $ matchAccept (allMime ct) h
+          body = fromMaybe "" $ mapAccept (allMimeRender ct e) h
       throwError ServantErr { errHTTPCode = statusCode $ status e
                             , errReasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage $ status e
-                            , errBody = fromMaybe "" body -- AllMimeRender should prevent @Nothing@
-                            , errHeaders = (hContentType, h) : headers e
+                            , errBody = body
+                            , errHeaders = (hContentType, renderHeader $ contentType) : headers e
                             }
 
 #if MIN_VERSION_servant_server(0,12,0)
