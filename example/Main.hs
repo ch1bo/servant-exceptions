@@ -7,20 +7,29 @@
 
 module Main where
 
+import Control.Concurrent
+import Control.Monad             ((<=<))
 import Control.Monad.Catch       (MonadCatch, MonadThrow (..))
 import Control.Monad.IO.Class    (liftIO)
 import Data.Aeson
+import Data.Bifunctor            (bimap)
 import Data.Text                 (Text)
+import Data.Text.Encoding
 import Data.Typeable             (typeOf)
 import GHC.Generics
+import Network.HTTP.Client       (defaultManagerSettings, newManager)
 import Network.HTTP.Types.Status
 import Network.Wai.Handler.Warp
 import Servant
+import Servant.Client            (BaseUrl (..), Client, ClientM, Scheme (..), client, mkClientEnv,
+                                  runClientM)
 import Servant.Exception         (Exception (..), Throws, ToServantErr (..), mapException)
+import Servant.Exception.Client  ()
 import Servant.Exception.Server  ()
 
-import qualified Data.Text          as Text
-import qualified Data.Text.Encoding as Text
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text            as Text
+import qualified Data.Text.Encoding   as Text
 
 -- * Example types
 
@@ -41,6 +50,9 @@ instance ToJSON User
 
 instance MimeRender PlainText User where
   mimeRender ct = mimeRender ct . show
+
+instance MimeUnrender PlainText User where
+  mimeUnrender ct = bimap show User . decodeUtf8' . BSL.toStrict
 
 -- | Errors occurring at the 'UsersAPI'
 data UsersError = UserNotFound
@@ -76,6 +88,13 @@ instance ToJSON UsersError where
 instance MimeRender PlainText UsersError where
   mimeRender ct = mimeRender ct . message
 
+instance MimeUnrender PlainText UsersError where
+  mimeUnrender ct "UserNotFound"      = Right UserNotFound
+  mimeUnrender ct "UserAlreadyExists" = Right UserAlreadyExists
+  mimeUnrender ct "BadUser"           = Right BadUser
+  mimeUnrender ct "InternalError"     = Right InternalError
+  mimeUnrender ct bs                  = Left . show $ bs
+
 -- | An example backend error type, which knows nothing about HTTP status codes
 -- or content type encodings.
 data DatabaseError = QueryError
@@ -90,6 +109,11 @@ server :: MonadCatch m => ServerT API m
 server = getUsers
     :<|> getUser
     :<|> postUser
+
+clientGetUsers :: ClientM [User]
+clientGetUser :: Text -> ClientM User
+clientPostUser :: User -> ClientM ()
+clientGetUsers :<|> clientGetUser :<|> clientPostUser = client (Proxy :: Proxy API)
 
 getUsers :: Monad m => m [User]
 getUsers = return [User "foo"]
@@ -125,11 +149,19 @@ ntMapDatabaseErrors = mapException databaseErrors
   databaseErrors _ = InternalError
 
 main :: IO ()
-main =
-  run 8000
-  . serve (Proxy :: Proxy API)
+main = do
+  forkIO $ do
+    run 8000 . serve (Proxy :: Proxy API)
 #if MIN_VERSION_servant_server(0,12,0)
-  $ hoistServer (Proxy :: Proxy API) nt server
+      $ hoistServer (Proxy :: Proxy API) nt server
 #else
-  $ enter (NT nt) server
+      $ enter (NT nt) server
 #endif
+
+  manager' <- newManager defaultManagerSettings
+
+  res <- runClientM clientGetUsers (mkClientEnv manager' (BaseUrl Http "localhost" 8000 ""))
+
+  case res of
+    Left err -> putStrLn $ "Error: " ++ show err
+    Right users -> print users

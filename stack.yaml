@@ -1,5 +1,6 @@
 packages:
 - 'servant-exceptions'
+- 'servant-exceptions-client'
 - 'servant-exceptions-server'
 - 'example'
 

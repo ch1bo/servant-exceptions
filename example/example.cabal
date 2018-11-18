@@ -16,10 +16,14 @@ executable example
   main-is:             Main.hs
   build-depends:       aeson
                      , base >= 4.7 && < 5
+                     , bytestring
                      , exceptions
+                     , http-client
                      , http-types
+                     , servant-client
                      , servant-server
                      , servant-exceptions
+                     , servant-exceptions-client
                      , servant-exceptions-server
                      , text
                      , warp
