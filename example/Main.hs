@@ -1,12 +1,15 @@
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TypeOperators         #-}
 
 module Main where
 
+import Control.Applicative
 import Control.Concurrent
 import Control.Monad             ((<=<))
 import Control.Monad.Catch       (MonadCatch, MonadThrow (..))
@@ -78,6 +81,9 @@ instance ToJSON UsersError where
                     , "message" .= message e
                     ]
 
+instance FromJSON UsersError where
+  parseJSON (Object v) = v .: "type"
+
 instance MimeRender PlainText UsersError where
   mimeRender ct = mimeRender ct . show
 
@@ -87,6 +93,9 @@ instance MimeUnrender PlainText UsersError where
   mimeUnrender ct "BadUser"           = Right BadUser
   mimeUnrender ct "InternalError"     = Right InternalError
   mimeUnrender ct bs                  = Left . show $ bs
+
+instance MimeUnrender PlainText a => MimeUnrender PlainText (Either UsersError a) where
+  mimeUnrender ct a = Left <$> mimeUnrender ct a <|> Right <$> mimeUnrender ct a
 
 -- | An example backend error type, which knows nothing about HTTP status codes
 -- or content type encodings.
@@ -103,9 +112,9 @@ server = getUsers
          :<|> getUser
          :<|> postUser
 
-clientGetUsers :: ClientM [User]
-clientGetUser :: Text -> ClientM User
-clientPostUser :: User -> ClientM ()
+clientGetUsers :: ClientM (Either UsersError [User])
+clientGetUser :: Text -> ClientM (Either UsersError User)
+clientPostUser :: User -> ClientM (Either UsersError ())
 clientGetUsers :<|> clientGetUser :<|> clientPostUser = client (Proxy :: Proxy API)
 
 getUsers :: Monad m => m [User]
@@ -130,7 +139,7 @@ nt = mapException databaseErrors . liftIO
 
 main :: IO ()
 main = do
-  forkIO $ do
+  srv <- forkIO $ do
     run 8000 . serve (Proxy :: Proxy API)
 #if MIN_VERSION_servant_server(0,12,0)
       $ hoistServer (Proxy :: Proxy API) nt server
@@ -145,3 +154,5 @@ main = do
   case res of
     Left err -> putStrLn $ "Error: " ++ show err
     Right users -> print users
+
+  killThread srv
