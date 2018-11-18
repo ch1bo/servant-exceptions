@@ -12,7 +12,9 @@
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-module Servant.Exception
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
+module Servant.Exception.Server
   ( Throws
   , ToServantErr(..)
   , ServantException
@@ -22,42 +24,25 @@ module Servant.Exception
   , mapException
   ) where
 
-import Control.Monad.Catch                        (Exception (..), MonadCatch, SomeException, catch,
-                                                   throwM)
+import Servant.Exception                          (ToServantErr(..), Throws, ServantException, toServantException, fromServantException, mapException)
+
+import Control.Monad.Catch                        (Exception (..), catch)
 import Control.Monad.Error.Class                  (MonadError (..))
-import Data.Aeson                                 (ToJSON (..), encode, object, (.=))
 import Data.Maybe                                 (fromMaybe)
 import Data.Monoid                                ((<>))
 import Data.Proxy                                 (Proxy (..))
-import Data.String                                (fromString)
-import Data.Text                                  (Text)
-import Data.Typeable                              (Typeable, cast, typeOf)
 import GHC.TypeLits                               (Nat)
 import Network.HTTP.Media                         (mapAccept, matchAccept, renderHeader)
-import Network.HTTP.Types                         (Header, Status (..), hAccept, hContentType)
+import Network.HTTP.Types                         (Status (..), hAccept, hContentType)
 import Network.Wai                                (requestHeaders)
 import Servant                                    hiding (Header)
-import Servant.API.ContentTypes                   (AllMimeRender, JSON, MimeRender (..), PlainText,
-                                                   allMime, allMimeRender)
+import Servant.API.ContentTypes                   (AllMimeRender, allMime, allMimeRender)
 import Servant.Server.Internal.RoutingApplication (Delayed (..))
 
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
 
--- * Conversion type class
-
-class (Typeable e, Show e) => ToServantErr e where
-  status :: e -> Status
-
-  message :: e -> Text
-  message = fromString . show
-
-  headers :: e -> [Header]
-  headers _ = []
-
 -- * Type level annotated exception handling
-
-data Throws (e :: *)
 
 -- | Main @HasServer@ instance for @Throws e@. Catches exceptions of type @e@ in
 -- the upstream server and encodes them using @ToServantErr@ and @MimeRender@.
@@ -118,41 +103,3 @@ instance HasServer (Throws e :> api1 :<|> Throws e :> api2) context =>
 #if MIN_VERSION_servant_server(0,12,0)
   hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (Throws e :> api1 :<|> Throws e :> api2))
 #endif
-
--- * Exception utilities
-
--- | A root exception type (see "Control.Exception") to provide a common
--- rendering format via @MimeRender@ for builtin content types @JSON@ and
--- @PlainText@.
-data ServantException = forall e. (Exception e, ToJSON e, ToServantErr e) => ServantException e
-                      deriving (Typeable)
-
-instance Show ServantException where
-  show (ServantException e) = show e
-
-instance Exception ServantException
-
-instance MimeRender JSON ServantException where
-  mimeRender _ (ServantException e) = encode $ object [ "type" .= errorType
-                                                      , "message" .= message e
-                                                      , "error" .= toJSON e
-                                                      ]
-   where
-    errorType = show $ typeOf e
-
-instance MimeRender PlainText ServantException where
-  mimeRender ct = mimeRender ct . displayException
-
-instance ToServantErr ServantException where
-  status (ServantException e) = status e
-  message (ServantException e) = message e
-
-toServantException :: (Exception e, ToJSON e, ToServantErr e) => e -> SomeException
-toServantException = toException . ServantException
-
-fromServantException :: Exception e => SomeException -> Maybe e
-fromServantException x = fromException x >>= \(ServantException e) -> cast e
-
--- | Catch and rethrow using mapping function @f@.
-mapException :: (Exception e1, Exception e2, MonadCatch m) => (e1 -> e2) -> m a -> m a
-mapException f a = a `catch` (throwM . f)

@@ -105,12 +105,16 @@ install:
 - |
   case "$BUILD" in
     stack)
-      stack --no-terminal --install-ghc $ARGS build --test --bench --only-dependencies
+      stack --no-terminal --install-ghc $ARGS build --test --bench --fast --only-dependencies
       ;;
-    cabal)
+      cabal)
       cabal --version
       travis_retry cabal update
-      cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1
+      for dir in "servant-exceptions" "servant-exceptions-server" "example"; do
+        cd ${dir}
+        cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1
+        cd -
+      done
       ;;
   esac
 
@@ -118,11 +122,15 @@ script:
 - |
   case "$BUILD" in
     stack)
-      stack --no-terminal $ARGS build --test --bench --no-run-benchmarks --haddock --no-haddock-deps
+      stack --no-terminal $ARGS build --test --bench --fast --haddock --no-haddock-deps
       ;;
     cabal)
-      cabal configure --enable-tests --enable-benchmarks -v2 --ghc-options="-O0"
-      cabal build
-      cabal test
+      for dir in "servant-exceptions" "servant-exceptions-server" "example"; do
+        cd ${dir}
+        cabal configure --enable-tests --enable-benchmarks -v2 --ghc-options="-O0"
+        cabal build
+        cabal test
+        cd -
+      done
       ;;
   esac

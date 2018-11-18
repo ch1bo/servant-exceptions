@@ -1,0 +1,32 @@
+name:                  example
+version:               0.1.1
+description:           Extensible exceptions for servant APIs
+homepage:              https://github.com/ch1bo/servant-exceptions#readme
+license:               BSD3
+license-file:          ../LICENSE
+author:                Sebastian Nagel
+maintainer:            sebastian.nagel@ncoding.at
+copyright:             2017 Sebastian Nagel
+category:              Web
+build-type:            Simple
+extra-source-files:    ../CHANGELOG.md
+                     , ../README.md
+cabal-version:         >=1.10
+
+executable example
+  hs-source-dirs:      .
+  main-is:             Main.hs
+  build-depends:       aeson
+                     , base >= 4.7 && < 5
+                     , exceptions
+                     , http-types
+                     , servant-server
+                     , servant-exceptions
+                     , servant-exceptions-server
+                     , text
+                     , warp
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/ch1bo/servant-exceptions

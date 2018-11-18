@@ -17,6 +17,7 @@ import Network.HTTP.Types.Status
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.Exception         (Exception (..), Throws, ToServantErr (..), mapException)
+import Servant.Exception.Server  (mapException)
 
 import qualified Data.Text as Text
 
