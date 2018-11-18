@@ -1,4 +1,4 @@
-name:                  example
+name:                  servant-exceptions-client
 version:               0.1.1
 description:           Extensible exceptions for servant APIs
 homepage:              https://github.com/ch1bo/servant-exceptions#readme
@@ -13,23 +13,20 @@ extra-source-files:    ../CHANGELOG.md
                      , ../README.md
 cabal-version:         >=1.10
 
-executable example
-  hs-source-dirs:      .
-  main-is:             Main.hs
-  build-depends:       aeson
-                     , base >= 4.7 && < 5
-                     , bytestring
+library
+  hs-source-dirs:      src
+  exposed-modules:     Servant.Exception.Client
+  build-depends:       base >= 4.7 && < 5
                      , exceptions
-                     , http-client
+                     , http-media
                      , http-types
-                     , servant-client
-                     , servant-server
+                     , mtl
+                     , servant
                      , servant-exceptions
-                     , servant-exceptions-client
-                     , servant-exceptions-server
+                     , servant-client-core
                      , text
-                     , warp
   default-language:    Haskell2010
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
 
 source-repository head
   type:     git
