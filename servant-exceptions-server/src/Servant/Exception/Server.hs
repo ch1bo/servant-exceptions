@@ -37,10 +37,16 @@ import Network.HTTP.Types                         (Status (..), hAccept, hConten
 import Network.Wai                                (requestHeaders)
 import Servant                                    hiding (Header)
 import Servant.API.ContentTypes                   (AllMimeRender, allMime, allMimeRender)
+#if MIN_VERSION_servant_server(0,16,0)
+import Servant.Server.Internal.Delayed (Delayed (..))
+import Servant.Server.Internal.ServerError (ServerError(..))
+#else
 import Servant.Server.Internal.RoutingApplication (Delayed (..))
+#endif
 
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
+
 
 -- * Type level annotated exception handling
 
@@ -68,8 +74,14 @@ instance ( Exception e
       -- AllMime and AllMimeRender should prevent @Nothing@
       let contentType = fromMaybe "" $ matchAccept (allMime ct) h
           body = fromMaybe "" $ mapAccept (allMimeRender ct e) h
-      throwError ServantErr { errHTTPCode = statusCode $ status e
-                            , errReasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage $ status e
+      throwError
+#if MIN_VERSION_servant_server(0,16,0)
+         ServerError
+#else
+         ServantErr
+#endif
+            { errHTTPCode = statusCode $ status e
+            , errReasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage $ status e
                             , errBody = body
                             , errHeaders = (hContentType, renderHeader $ contentType) : headers e
                             }
