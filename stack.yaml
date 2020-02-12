@@ -1,5 +1,6 @@
 resolver: lts-12.14
 packages:
 - 'servant-exceptions'
+- 'servant-exceptions-client'
 - 'servant-exceptions-server'
 - 'example'
