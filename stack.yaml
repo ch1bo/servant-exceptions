@@ -1,5 +1,22 @@
-resolver: lts-12.14
 packages:
 - 'servant-exceptions'
 - 'servant-exceptions-server'
 - 'example'
+
+# GHC-8.2.2 / servant-0.11
+# resolver: lts-10.10
+
+# GHC-8.2.2 / servant-0.13.0.1
+# resolver: lts-11.22
+
+# GHC-8.4.4 / servant-0.14.1
+# resolver: lts-12.26
+
+# GHC-8.6.5 / servant-0.15
+# resolver: lts-13.30
+
+# GHC-8.8.4 / servant 0.16.2
+resolver: lts-16.22
+
+# GHC-8.10.2 / servant 0.18.1
+# resolver: nightly-2020-11-20
