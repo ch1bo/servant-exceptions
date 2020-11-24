@@ -1,5 +1,5 @@
 name:                  servant-exceptions
-version:               0.1.1
+version:               0.1.2
 description:           Extensible exceptions for servant APIs
 homepage:              https://github.com/ch1bo/servant-exceptions#readme
 license:               BSD3

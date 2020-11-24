@@ -12,7 +12,10 @@
 }:
 
 with pkgs;
-
+let
+  hls = pkgs.haskell-language-server.override
+    { supportedGhcVersions = [ compilerVersion ]; };
+in
 # build using nix-shell --run "stack --system-ghc build"
 pkgs.mkShell rec {
   buildInputs = [

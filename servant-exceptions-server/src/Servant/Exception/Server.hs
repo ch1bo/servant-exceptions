@@ -24,29 +24,30 @@ module Servant.Exception.Server
   , mapException
   ) where
 
-import Servant.Exception                          (ToServantErr(..), Throws, ServantException, toServantException, fromServantException, mapException)
+import Servant.Exception (ServantException, Throws, ToServantErr (..), fromServantException,
+                          mapException, toServantException)
 
-import Control.Monad.Catch                        (Exception (..), catch)
-import Control.Monad.Error.Class                  (MonadError (..))
-import Data.Maybe                                 (fromMaybe)
-import Data.Monoid                                ((<>))
-import Data.Proxy                                 (Proxy (..))
-import GHC.TypeLits                               (Nat)
-import Network.HTTP.Media                         (mapAccept, matchAccept, renderHeader)
-import Network.HTTP.Types                         (Status (..), hAccept, hContentType)
-import Network.Wai                                (requestHeaders)
-import Servant                                    hiding (Header)
-import Servant.API.ContentTypes                   (AllMimeRender, allMime, allMimeRender)
+import Control.Monad.Catch       (Exception (..), catch)
+import Control.Monad.Error.Class (MonadError (..))
+import Data.Kind                 (Type)
+import Data.Maybe                (fromMaybe)
+import Data.Proxy                (Proxy (..))
+import GHC.TypeLits              (Nat)
+import Network.HTTP.Media        (mapAccept, matchAccept, renderHeader)
+import Network.HTTP.Types        (Status (..), hAccept, hContentType)
+import Network.Wai               (requestHeaders)
+import Servant                   (HasServer (..), Verb, type (:<|>), type (:>))
+import Servant.API.ContentTypes  (AllMimeRender, allMime, allMimeRender)
 #if MIN_VERSION_servant_server(0,16,0)
-import Servant.Server.Internal.Delayed (Delayed (..))
-import Servant.Server.Internal.ServerError (ServerError(..))
+import Servant.Server.Internal.Delayed     (Delayed (..))
+import Servant.Server.Internal.ServerError (ServerError (..))
 #else
+import Servant.Server                             (ServantErr (..))
 import Servant.Server.Internal.RoutingApplication (Delayed (..))
 #endif
 
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
-
 
 -- * Type level annotated exception handling
 
@@ -56,7 +57,7 @@ instance ( Exception e
          , ToServantErr e
          , AllMimeRender ct e
          , HasServer (Verb mt st ct a) context
-         ) => HasServer (Throws e :> Verb (mt :: k) (st :: Nat) (ct :: [*]) (a :: *)) context where
+         ) => HasServer (Throws e :> Verb (mt :: k) (st :: Nat) (ct :: [Type]) (a :: Type)) context where
 
   type ServerT (Throws e :> Verb mt st ct a) m =
        ServerT (Verb mt st ct a) m
@@ -76,15 +77,16 @@ instance ( Exception e
           body = fromMaybe "" $ mapAccept (allMimeRender ct e) h
       throwError
 #if MIN_VERSION_servant_server(0,16,0)
-         ServerError
+        ServerError
 #else
-         ServantErr
+        ServantErr
 #endif
-            { errHTTPCode = statusCode $ status e
-            , errReasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage $ status e
-                            , errBody = body
-                            , errHeaders = (hContentType, renderHeader $ contentType) : headers e
-                            }
+          { errHTTPCode = statusCode $ status e
+          , errReasonPhrase = Text.unpack . Text.decodeUtf8 . statusMessage $ status e
+          , errBody = body
+          , errHeaders = (hContentType, renderHeader contentType) : headers e
+          }
+
 
 #if MIN_VERSION_servant_server(0,12,0)
   hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (Verb mt st ct a))

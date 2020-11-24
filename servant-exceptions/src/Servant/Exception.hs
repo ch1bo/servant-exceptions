@@ -1,35 +1,34 @@
-{-# LANGUAGE CPP                       #-}
-{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE PolyKinds                 #-}
-{-# LANGUAGE RecordWildCards           #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Servant.Exception
-  ( Throws
-  , ToServantErr(..)
-  , ServantException
-  , toServantException
-  , fromServantException
-  , Exception(..)
-  , mapException
-  ) where
+  ( Throws,
+    ToServantErr (..),
+    ServantException,
+    toServantException,
+    fromServantException,
+    Exception (..),
+    mapException,
+  )
+where
 
-import Control.Monad.Catch                        (Exception (..), MonadCatch, SomeException, catch,
-                                                   throwM)
-import Data.Aeson                                 (ToJSON (..), encode, object, (.=))
-import Data.String                                (fromString)
-import Data.Text                                  (Text)
-import Data.Typeable                              (Typeable, cast, typeOf)
-import Network.HTTP.Types                         (Header, Status (..))
-import Servant.API.ContentTypes                   (JSON, MimeRender (..), PlainText)
+import Control.Monad.Catch (Exception (..), MonadCatch, SomeException, catch, throwM)
+import Data.Aeson (ToJSON (..), encode, object, (.=))
+import Data.Kind (Type)
+import Data.String (fromString)
+import Data.Text (Text)
+import Data.Typeable (Typeable, cast, typeOf)
+import Network.HTTP.Types (Header, Status (..))
+import Servant.API.ContentTypes (JSON, MimeRender (..), PlainText)
 
 -- * Conversion type class
 
@@ -44,7 +43,7 @@ class (Typeable e, Show e) => ToServantErr e where
 
 -- * Type level annotated exception handling
 
-data Throws (e :: *)
+data Throws (e :: Type)
 
 -- * Exception utilities
 
@@ -52,7 +51,7 @@ data Throws (e :: *)
 -- rendering format via @MimeRender@ for builtin content types @JSON@ and
 -- @PlainText@.
 data ServantException = forall e. (Exception e, ToJSON e, ToServantErr e) => ServantException e
-                      deriving (Typeable)
+  deriving (Typeable)
 
 instance Show ServantException where
   show (ServantException e) = show e
@@ -60,12 +59,15 @@ instance Show ServantException where
 instance Exception ServantException
 
 instance MimeRender JSON ServantException where
-  mimeRender _ (ServantException e) = encode $ object [ "type" .= errorType
-                                                      , "message" .= message e
-                                                      , "error" .= toJSON e
-                                                      ]
-   where
-    errorType = show $ typeOf e
+  mimeRender _ (ServantException e) =
+    encode $
+      object
+        [ "type" .= errorType,
+          "message" .= message e,
+          "error" .= toJSON e
+        ]
+    where
+      errorType = show $ typeOf e
 
 instance MimeRender PlainText ServantException where
   mimeRender ct = mimeRender ct . displayException
