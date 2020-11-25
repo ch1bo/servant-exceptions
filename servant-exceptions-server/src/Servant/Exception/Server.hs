@@ -27,6 +27,11 @@ module Servant.Exception.Server
 import Servant.Exception (ServantException, Throws, ToServantErr (..), fromServantException,
                           mapException, toServantException)
 
+#if MIN_VERSION_base(4,11,0)
+-- (<>) exported by Prelude as of base-4.11.0
+#else
+import Data.Semigroup ((<>))
+#endif
 import Control.Monad.Catch       (Exception (..), catch)
 import Control.Monad.Error.Class (MonadError (..))
 import Data.Kind                 (Type)

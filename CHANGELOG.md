@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - UNRELEASED
+
+ * Fix import with older GHC/base versions.
+
 ## 0.2.0 - 2020-11-25
 
  * **BREAKING** Split into two packages `servant-exceptions` and
