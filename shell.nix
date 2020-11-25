@@ -6,7 +6,7 @@
       sha256 = "09jzdnsq7f276cfkmynqiaqg145k8z908rlr0170ld1sms1a83rw";
     })
     { }
-, compilerVersion ? "884" # NOTE: update this manually according to stack resolver
+, compilerVersion ? "8102" # NOTE: update this manually according to stack resolver
 , compiler ? "ghc${compilerVersion}"
 , ghc ? pkgs.haskell.compiler.${compiler} # passed by stack --nix
 }:

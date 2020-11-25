@@ -16,7 +16,7 @@ packages:
 # resolver: lts-13.30
 
 # GHC-8.8.4 / servant 0.16.2
-resolver: lts-16.22
+# resolver: lts-16.22
 
 # GHC-8.10.2 / servant 0.18.1
-# resolver: nightly-2020-11-20
+resolver: nightly-2020-11-23
