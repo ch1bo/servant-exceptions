@@ -17,7 +17,7 @@ import Network.HTTP.Types.Status
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.Exception         (Exception (..), Throws, ToServantErr (..), mapException)
-import Servant.Exception.Server  (mapException)
+import Servant.Exception.Server  ()
 
 import qualified Data.Text as Text
 
@@ -41,34 +41,38 @@ instance ToJSON User
 instance MimeRender PlainText User where
   mimeRender ct = mimeRender ct . show
 
--- | Erros occurring at the @UsersAPI@, which can be converted to @ServantErr@
--- via @ToServantErr@.
+-- | Errors occurring at the 'UsersAPI'
 data UsersError = UserNotFound
                 | UserAlreadyExists
                 | BadUser
                 | InternalError
                 deriving (Show)
 
+-- | Required to be able to 'throwM' and 'catch' 'UsersError' errors.
 instance Exception UsersError
 
--- | Provide a conversion to servant's error type @ServantErr@.
+-- | Provide means to convert 'UsersError' to servant's error types.
 instance ToServantErr UsersError where
   status UserNotFound = status404
   status UserAlreadyExists = status409
   status BadUser = status400
   status InternalError = status500
 
-  -- TODO(SN): not used right now, default MimeRender?
+  -- TODO(SN): not used right now, default MimeRender PlainText?
   message InternalError = "Something bad happened internally"
   message e = Text.pack $ show e
 
+-- | There is a builtin 'MimeRender JSON' instance which uses 'ToJSON' to create
+-- the actual error response payload. If we only use 'ToServantErr' functions,
+-- we could re-use this implementation easily 'forall e. ToServantErr e'.
 instance ToJSON UsersError where
   toJSON e = object [ "type" .= show (typeOf e)
                     , "message" .= message e
                     ]
 
+-- | For 'PlainText' we
 instance MimeRender PlainText UsersError where
-  mimeRender ct = mimeRender ct . show
+  mimeRender ct = mimeRender ct . message
 
 -- | An example backend error type, which knows nothing about HTTP status codes
 -- or content type encodings.
@@ -82,8 +86,8 @@ instance Exception DatabaseError
 
 server :: MonadCatch m => ServerT API m
 server = getUsers
-         :<|> getUser
-         :<|> postUser
+    :<|> getUser
+    :<|> postUser
 
 getUsers :: Monad m => m [User]
 getUsers = return [User "foo"]
@@ -94,13 +98,26 @@ getUser n
   | n == "bar" = throwM ConnectionFailure
   | otherwise = throwM UserNotFound
 
-postUser :: MonadCatch m => User -> m ()
+postUser :: MonadThrow m => User -> m ()
 postUser (User n)
   | Text.length n < 3 = throwM BadUser
   | otherwise = throwM QueryError
 
+-- | This natural transformation strips off 'ExceptT ServerError' from 'Handler'
+-- and leaves us with plain 'IO' for our handlers.
+--
+-- The 'mapException databaseErrors' shows how we could generally catch and
+-- rethrow "backend" errors into our api error type 'UsersError'.
 nt :: IO a -> Handler a
 nt = mapException databaseErrors . liftIO
+ where
+  databaseErrors :: DatabaseError -> UsersError
+  databaseErrors _ = InternalError
+
+-- | A natural transformation like this one, can be used to only "map"
+-- exceptions in parts of the API using 'hoistServer pi ntMapDatabaseErors'.
+ntMapDatabaseErrors :: MonadCatch m => m a -> m a
+ntMapDatabaseErrors = mapException databaseErrors
  where
   databaseErrors :: DatabaseError -> UsersError
   databaseErrors _ = InternalError

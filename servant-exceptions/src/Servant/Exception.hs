@@ -1,14 +1,14 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE PolyKinds                 #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 module Servant.Exception
   ( Throws,
@@ -17,17 +17,17 @@ module Servant.Exception
     toServantException,
     fromServantException,
     Exception (..),
-    mapException,
+    mapException
   )
 where
 
-import Control.Monad.Catch (Exception (..), MonadCatch, SomeException, catch, throwM)
-import Data.Aeson (ToJSON (..), encode, object, (.=))
-import Data.Kind (Type)
-import Data.String (fromString)
-import Data.Text (Text)
-import Data.Typeable (Typeable, cast, typeOf)
-import Network.HTTP.Types (Header, Status (..))
+import Control.Monad.Catch      (Exception (..), MonadCatch, SomeException, catch, throwM)
+import Data.Aeson               (ToJSON (..), encode, object, (.=))
+import Data.Kind                (Type)
+import Data.String              (fromString)
+import Data.Text                (Text)
+import Data.Typeable            (Typeable, cast, typeOf)
+import Network.HTTP.Types       (Header, Status (..))
 import Servant.API.ContentTypes (JSON, MimeRender (..), PlainText)
 
 -- * Conversion type class
