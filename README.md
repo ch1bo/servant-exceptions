@@ -1,4 +1,10 @@
 # servant-exceptions [![Build Status](https://travis-ci.org/ch1bo/servant-exceptions.svg?branch=master)](https://travis-ci.org/ch1bo/servant-exceptions)
+
+| Package                   | Hackage                                                                                                                                     |
+| --------------------      | ---------------------------------------------------------------------------------------------------------------------------------           |
+| servant-exceptions        | [![Hackage](https://img.shields.io/hackage/v/servant-exceptions.svg)](https://hackage.haskell.org/package/servant-exceptions)               |
+| servant-exceptions-server | [![Hackage](https://img.shields.io/hackage/v/servant-exceptions-server.svg)](https://hackage.haskell.org/package/servant-exceptions-server) |
+
 Servant servers typically run their handlers in some form of `IO`. Either directly in the builtin `Handler` monad or a custom monad transformer on top it. When APIs fail, one would typically use the `MonadError ServantError` instance via `throwError` to create an error response of type `ServantErr`.
 
 This approach has two problems:
@@ -40,11 +46,6 @@ instance MimeRender PlainText UsersError where
 ```
 
 See [example](https://github.com/ch1bo/servant-exceptions/blob/master/example/Main.hs) for a full, commented example.
-
-## Packages
-
-* [servant-exceptions](https://hackage.haskell.org/package/servant-exceptions)
-* [servant-exceptions-server](https://hackage.haskell.org/package/servant-exceptions-server)
 
 ## Features
 
