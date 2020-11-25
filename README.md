@@ -41,6 +41,11 @@ instance MimeRender PlainText UsersError where
 
 See [example](https://github.com/ch1bo/servant-exceptions/blob/master/example/Main.hs) for a full, commented example.
 
+## Packages
+
+* [servant-exceptions](https://hackage.haskell.org/package/servant-exceptions)
+* [servant-exceptions-server](https://hackage.haskell.org/package/servant-exceptions-server)
+
 ## Features
 
  * Declarative conversion of errors into error responses using `ToServantErr`
