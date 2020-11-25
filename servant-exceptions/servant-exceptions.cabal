@@ -1,6 +1,10 @@
 name:                  servant-exceptions
 version:               0.1.2
-description:           Extensible exceptions for servant APIs
+synopsis:              Extensible exceptions for servant APIs
+description: `servant-exceptions` provides a `Throw` combinator to declare what
+                       types of errors an API might throw. The server
+                       implementation catches them and allows for a canonical
+                       encoding using servant content-type machinery.
 homepage:              https://github.com/ch1bo/servant-exceptions#readme
 license:               BSD3
 license-file:          LICENSE

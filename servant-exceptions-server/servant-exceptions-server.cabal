@@ -1,6 +1,10 @@
 name:                  servant-exceptions-server
 version:               0.1.2
-description:           Extensible exceptions for servant APIs
+synopsis:              Extensible exceptions for servant API servers
+description: `servant-exceptions-server` provides the `servant-server` related
+                       parts for `servant-exceptions`. Namely it catches
+                       declared exceptions and renders responses using the
+                       handler content-type.
 homepage:              https://github.com/ch1bo/servant-exceptions#readme
 license:               BSD3
 license-file:          LICENSE

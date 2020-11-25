@@ -6,17 +6,17 @@ This approach has two problems:
 * `Handler` (basically being `ExceptT ServantErr IO`) is considered an anti-pattern by some, as it suggests to novice users that only `ServantErr` would occur, but in `IO` any exception can be raised to abort execution
 * `ServantErr` values need to be created at the call site of `throwError`, where the requested content type and/or headers are not available
 
-`servant-exception` tries to help with both by making it easy to catch specific error types with an instance of `Exception` and provide automatic encoding into the requested content-type.
+`servant-exceptions` tries to help with both by making it easy to catch specific error types with an instance of `Exception` and provide automatic encoding into the requested content-type.
 
 The API combinator `Throws e` can be used to catch exceptions of type `e` in the server, for example:
 
-```
+```haskell
 type API = "api" :> Throws UsersError :> "users" :> Get '[JSON, PlainText] [User]
 ```
 
 The type `UsersError` can then be used to describe expected errors and their conversion via type class instances:
 
-```
+```haskell
 data UsersError = UserNotFound
                 | UserAlreadyExists
                 | InternalError
@@ -38,13 +38,13 @@ instance MimeRender PlainText UsersError where
   mimeRender ct = mimeRender ct . show
 ```
 
-## TODO
+## Planned features
 
-This package is still a work-in-progress and lacks at least
+This package lacks at least
 
-* Documentation, more examples
 * `servant-client` support
 * `servant-docs` support
+* Documentation, more examples
 
 ## Credit
 
