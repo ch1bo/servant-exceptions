@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 - UNRELEASED
+## 0.2.1 - 2020-11-25
 
  * Fix import with older GHC/base versions.
  * Improve documentation
