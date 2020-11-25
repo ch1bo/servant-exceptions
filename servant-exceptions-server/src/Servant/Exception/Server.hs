@@ -14,6 +14,7 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- | 'HasServer' instances for the 'Throws' api combinator.
 module Servant.Exception.Server
   ( Throws
   , ToServantErr(..)
@@ -54,10 +55,9 @@ import Servant.Server.Internal.RoutingApplication (Delayed (..))
 import qualified Data.Text          as Text
 import qualified Data.Text.Encoding as Text
 
--- * Type level annotated exception handling
-
--- | Main @HasServer@ instance for @Throws e@. Catches exceptions of type @e@ in
--- the upstream server and encodes them using @ToServantErr@ and @MimeRender@.
+-- | Main 'HasServer' instance for 'Throws e'. Catches exceptions of type 'e' in
+-- the upstream server and encodes them using 'ToServantErr' and 'MimeRender' to
+-- a response with appropriate content-type (uses 'hAccept' header) and body.
 instance ( Exception e
          , ToServantErr e
          , AllMimeRender ct e
@@ -77,7 +77,7 @@ instance ( Exception e
               }
 
     handleException ct h a = a `catch` \(e :: e) -> do
-      -- AllMime and AllMimeRender should prevent @Nothing@
+      -- AllMime and AllMimeRender should prevent 'Nothing'
       let contentType = fromMaybe "" $ matchAccept (allMime ct) h
           body = fromMaybe "" $ mapAccept (allMimeRender ct e) h
       throwError
@@ -97,7 +97,7 @@ instance ( Exception e
   hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (Verb mt st ct a))
 #endif
 
--- | Push @Throws@ further "upstream".
+-- | Push 'Throws' further "upstream".
 instance HasServer (api :> Throws e :> upstream) context =>
          HasServer (Throws e :> api :> upstream) context where
 
@@ -110,7 +110,7 @@ instance HasServer (api :> Throws e :> upstream) context =>
   hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy (api :> Throws e :> upstream))
 #endif
 
--- | Transitive application of @Throws@ on @(:<|>)@.
+-- | Transitive application of 'Throws' on '(:<|>)'.
 instance HasServer (Throws e :> api1 :<|> Throws e :> api2) context =>
          HasServer (Throws e :> (api1 :<|> api2)) context where
 

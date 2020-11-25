@@ -8,7 +8,8 @@ This approach has two problems:
 
 `servant-exceptions` tries to help with both by making it easy to catch specific error types with an instance of `Exception` and provide automatic encoding into the requested content-type.
 
-The API combinator `Throws e` can be used to catch exceptions of type `e` in the server, for example:
+The API combinator `Throws e` can be used to annotate what error types `e` might
+be thrown by a server, for example:
 
 ```haskell
 type API = "api" :> Throws UsersError :> "users" :> Get '[JSON, PlainText] [User]
@@ -38,13 +39,23 @@ instance MimeRender PlainText UsersError where
   mimeRender ct = mimeRender ct . show
 ```
 
-## Planned features
+See [example](https://github.com/ch1bo/servant-exceptions/blob/master/example/Main.hs) for a full, commented example.
+
+## Features
+
+ * Declarative conversion of errors into error responses using `ToServantErr`
+ * Respects `Accept` headers and constructs responses accordingly using `MimeRender`
+ * Add headers to error responses, also via `ToServantErr`
+ * Type-driven exception handling in `ServerT` stacks
+ * Convert "backend" errors into "api" errors using `mapException`
+
+## Planned things
 
 This package lacks at least
 
-* `servant-client` support
-* `servant-docs` support
-* Documentation, more examples
+* `servant-client` to rethrow exceptions (using `MonadThrow` and/or `MonadError`?)
+* `servant-docs` support for automatic error documentation
+* Documentation, more examples (explain included `ServantException` helper type)
 
 ## Credit
 

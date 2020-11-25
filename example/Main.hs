@@ -19,7 +19,8 @@ import Servant
 import Servant.Exception         (Exception (..), Throws, ToServantErr (..), mapException)
 import Servant.Exception.Server  ()
 
-import qualified Data.Text as Text
+import qualified Data.Text          as Text
+import qualified Data.Text.Encoding as Text
 
 -- * Example types
 
@@ -58,9 +59,10 @@ instance ToServantErr UsersError where
   status BadUser = status400
   status InternalError = status500
 
-  -- TODO(SN): not used right now, default MimeRender PlainText?
   message InternalError = "Something bad happened internally"
   message e = Text.pack $ show e
+
+  headers e = [("X-Reason", Text.encodeUtf8 $ message e)]
 
 -- | There is a builtin 'MimeRender JSON' instance which uses 'ToJSON' to create
 -- the actual error response payload. If we only use 'ToServantErr' functions,

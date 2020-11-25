@@ -3,6 +3,7 @@
 ## 0.2.1 - UNRELEASED
 
  * Fix import with older GHC/base versions.
+ * Improve documentation
 
 ## 0.2.0 - 2020-11-25
 
