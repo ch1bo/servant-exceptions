@@ -1,5 +1,5 @@
 name:                  servant-exceptions
-version:               0.2.1
+version:               0.3.0
 synopsis:              Extensible exceptions for servant APIs
 description: `servant-exceptions` provides a `Throw` combinator to declare what
                        types of errors an API might throw. The server

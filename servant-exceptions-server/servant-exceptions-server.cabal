@@ -1,5 +1,5 @@
 name:                  servant-exceptions-server
-version:               0.2.1
+version:               0.3.0
 synopsis:              Extensible exceptions for servant API servers
 description: `servant-exceptions-server` provides the `servant-server` related
                        parts for `servant-exceptions`. Namely it catches
