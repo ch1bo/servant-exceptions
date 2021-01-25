@@ -1,9 +1,9 @@
 { pkgs ? import
     (builtins.fetchTarball {
       # Descriptive name to make the store path easier to identify
-      name = "nixpkgs-unstable-2018-09-12";
-      url = "https://github.com/nixos/nixpkgs/archive/2247d824fe07f16325596acc7faa286502faffd1.tar.gz";
-      sha256 = "09jzdnsq7f276cfkmynqiaqg145k8z908rlr0170ld1sms1a83rw";
+      name = "nixpkgs-unstable-2021-01-04";
+      url = "https://github.com/nixos/nixpkgs/archive/56bb1b0f7a33e5d487dc2bf2e846794f4dcb4d01.tar.gz";
+      sha256 = "1wl5yglgj3ajbf2j4dzgsxmgz7iqydfs514w73fs9a6x253wzjbs";
     })
     { }
 , compilerVersion ? "8102" # NOTE: update this manually according to stack resolver
@@ -17,27 +17,16 @@ let
     { supportedGhcVersions = [ compilerVersion ]; };
 in
 # build using nix-shell --run "stack --system-ghc build"
-pkgs.mkShell rec {
+pkgs.haskell.lib.buildStackProject {
+  name = "servant-exceptions";
+  # src deliberatly not defined to prohibit using this derivation with nix-build (untested)
+  ghc = ghc;
   buildInputs = [
-    ghc
-    hls
+    # building
+    # ghc and stack already put in scope by buildStackProject
     pkgs.zlib
+    # haskell tooling
+    hls
     pkgs.stack
   ];
-
-  # Make libraries available to ld, such that template haskell compilation
-  # (ghci) can find them.
-  LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
-
-  # REVIEW alternative to the above
-  # shellHook = ''
-  #   eval $(grep export ${ghc}/bin/ghc)
-  #   export LD_LIBRARY_PATH="${pkgs.zlib}/lib";
-  # '';
 }
-# # build using stack --nix
-# pkgs.haskell.lib.buildStackProject {
-#   name = "servant-exceptions";
-#   ghc = ghc;
-#   buildInputs = [ pkgs.zlib ];
-# }
