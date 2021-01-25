@@ -32,29 +32,30 @@ import Servant.Exception.Server  ()
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text            as Text
 import qualified Data.Text.Encoding   as Text
+import           Debug.Trace          (trace)
 
 -- * Example types
 
 type API = "api" :> "users" :> UsersAPI
 
-type UsersAPI = Throws UsersError :> (
-  Get '[JSON] [User]
-  :<|> Capture "name" Text :> Get '[PlainText, JSON] User
-  :<|> ReqBody '[JSON] User :> Post '[JSON] ()
+type UsersAPI =
+  Throws UsersError :> (
+    Get '[JSON] [User]
+    :<|> Capture "name" Text :> Get '[PlainText, JSON] User
+    :<|> ReqBody '[JSON] User :> Post '[JSON] ()
   )
 
-newtype User = User Text
+newtype User = User { name :: Text }
              deriving (Eq, Show, Generic)
 
+instance ToJSON User
 instance FromJSON User
 
-instance ToJSON User
-
 instance MimeRender PlainText User where
-  mimeRender ct = mimeRender ct . show
+  mimeRender ct = mimeRender ct . name
 
 instance MimeUnrender PlainText User where
-  mimeUnrender ct = bimap show User . Text.decodeUtf8' . BSL.toStrict
+  mimeUnrender ct = fmap User . mimeUnrender ct
 
 -- | Errors occurring at the 'UsersAPI'
 data UsersError = UserNotFound
@@ -86,21 +87,21 @@ instance ToJSON UsersError where
                     , "message" .= message e
                     ]
 
-instance FromJSON UsersError where
-  parseJSON (Object v) = v .: "type"
+-- instance FromJSON UsersError where
+--   parseJSON (Object v) = v .: "type"
 
 instance MimeRender PlainText UsersError where
   mimeRender ct = mimeRender ct . message
 
-instance MimeUnrender PlainText UsersError where
-  mimeUnrender ct "UserNotFound"      = Right UserNotFound
-  mimeUnrender ct "UserAlreadyExists" = Right UserAlreadyExists
-  mimeUnrender ct "BadUser"           = Right BadUser
-  mimeUnrender ct "InternalError"     = Right InternalError
-  mimeUnrender ct bs                  = Left . show $ bs
+-- instance MimeUnrender PlainText UsersError where
+--   mimeUnrender ct "UserNotFound"      = Right UserNotFound
+--   mimeUnrender ct "UserAlreadyExists" = Right UserAlreadyExists
+--   mimeUnrender ct "BadUser"           = Right BadUser
+--   mimeUnrender ct "InternalError"     = Right InternalError
+--   mimeUnrender ct bs                  = Left . show $ bs
 
-instance MimeUnrender PlainText a => MimeUnrender PlainText (Either UsersError a) where
-  mimeUnrender ct a = Left <$> mimeUnrender ct a <|> Right <$> mimeUnrender ct a
+-- instance MimeUnrender PlainText a => MimeUnrender PlainText (Either UsersError a) where
+--   mimeUnrender ct a = Left <$> mimeUnrender ct a <|> Right <$> mimeUnrender ct a
 
 -- | An example backend error type, which knows nothing about HTTP status codes
 -- or content type encodings.
@@ -116,11 +117,6 @@ server :: MonadCatch m => ServerT API m
 server = getUsers
     :<|> getUser
     :<|> postUser
-
-clientGetUsers :: ClientM (Either UsersError [User])
-clientGetUser :: Text -> ClientM (Either UsersError User)
-clientPostUser :: User -> ClientM (Either UsersError ())
-clientGetUsers :<|> clientGetUser :<|> clientPostUser = client (Proxy :: Proxy API)
 
 getUsers :: Monad m => m [User]
 getUsers = return [User "foo"]
@@ -155,22 +151,34 @@ ntMapDatabaseErrors = mapException databaseErrors
   databaseErrors :: DatabaseError -> UsersError
   databaseErrors _ = InternalError
 
-main :: IO ()
-main = do
-  srv <- forkIO $ do
-    run 8000 . serve (Proxy :: Proxy API)
+serverMain :: Int -> IO ()
+serverMain port = do
+  run 8000
+    . serve (Proxy :: Proxy API)
 #if MIN_VERSION_servant_server(0,12,0)
-      $ hoistServer (Proxy :: Proxy API) nt server
+    $ hoistServer (Proxy :: Proxy API) nt server
 #else
-      $ enter (NT nt) server
+    $ enter (NT nt) server
 #endif
 
+-- * Example client
+
+clientGetUsers :: ClientM [User]
+clientGetUser :: Text -> ClientM User
+clientPostUser :: User -> ClientM ()
+clientGetUsers :<|> clientGetUser :<|> clientPostUser = client (Proxy :: Proxy API)
+
+main :: IO ()
+main = do
+  let port = 8000
+  srv <- forkIO $ serverMain port
+
   manager' <- newManager defaultManagerSettings
-
-  res <- runClientM clientGetUsers (mkClientEnv manager' (BaseUrl Http "localhost" 8000 ""))
-
-  case res of
-    Left err -> putStrLn $ "Error: " ++ show err
-    Right users -> print users
+  let env = mkClientEnv manager' (BaseUrl Http "localhost" port "")
+  res <- flip runClientM env $ do
+    -- clientGetUsers >>= liftIO . print
+    clientGetUser "foo" >>= liftIO . print
+    clientGetUser "bar" >>= liftIO . print
+  print res
 
   killThread srv
