@@ -34,28 +34,42 @@ import           Debug.Trace                   (trace)
 import           Network.HTTP.Media.Accept     (Accept (matches, parseAccept))
 import           Network.HTTP.Media.MediaType  ((//))
 import           Servant.Client.Core.RunClient (runRequest)
+import Control.Monad.Catch (MonadThrow(throwM))
 
 -- * Type level annotated exception handling
 
 instance ( Exception e
          , ToServantErr e
+         , MimeUnrender ct e
          , MimeUnrender ct a
-         , cts ~ (ct ': cts') -- REVIEW understand this fully. use first?
+         , cts ~ (ct ': cts')
          , ReflectMethod mt
          , RunClient m
          , HasClient m (Verb mt st cts a)
+         , MonadThrow m
          ) => HasClient m (Throws e :> Verb (mt :: k) (st :: Nat) (cts :: [Type]) (a :: Type)) where
 
   type Client m (Throws e :> Verb mt st cts a) = m a
 
-  clientWithRoute pm Proxy req = do
+  clientWithRoute _ _ req = do
     let req' = req { requestAccept = fromList $ toList accept
                    , requestMethod = method
                    }
-    response <- trace ("accept: " <> show (requestAccept req')) runRequest req'
+    -- TODO(SN): mark only known status codes of 'e' as good
+    let acceptStatus = Just [minBound..maxBound]
+    response <- trace ("accept: " <> show (requestAccept req')) runRequestAcceptStatus acceptStatus req'
     trace ("headers: " <> show (responseHeaders response))
-      trace ("body: " <> show (responseBody response))
-        response `decodedAs` (Proxy :: Proxy ct)
+      trace ("body: " <> show (responseBody response)) $ do
+        responseContentType <- checkContentTypeHeader response
+        unless (any (matches responseContentType) accept) $
+          throwClientError $ UnsupportedContentType responseContentType response
+        -- Try decoded happy case
+        case mimeUnrender (Proxy :: Proxy ct) $ responseBody response of
+          Right val -> return val
+          Left err ->
+            case mimeUnrender (Proxy :: Proxy e) $ responseBody response of
+              Right e -> throwM e
+              Left _ -> throwClientError $ DecodeFailure (Text.pack err) response
    where
     accept = contentTypes (Proxy :: Proxy ct)
     method = reflectMethod (Proxy :: Proxy mt)
@@ -63,6 +77,7 @@ instance ( Exception e
   -- No change in client monad
   hoistClientMonad _ Proxy f ma = f ma
 
+-- From servant-client-core
 checkContentTypeHeader :: RunClient m => Response -> m MediaType
 checkContentTypeHeader response =
   case lookup "Content-Type" $ toList $ responseHeaders response of
@@ -71,6 +86,7 @@ checkContentTypeHeader response =
       Nothing -> throwClientError $ InvalidContentTypeHeader response
       Just t' -> return t'
 
+-- From servant-client-core
 decodedAs :: forall ct a m. (MimeUnrender ct a, RunClient m)
   => Response -> Proxy ct -> m a
 decodedAs response ct = do

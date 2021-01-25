@@ -143,14 +143,6 @@ nt = mapException databaseErrors . liftIO
   databaseErrors :: DatabaseError -> UsersError
   databaseErrors _ = InternalError
 
--- | A natural transformation like this one, can be used to only "map"
--- exceptions in parts of the API using 'hoistServer pi ntMapDatabaseErors'.
-ntMapDatabaseErrors :: MonadCatch m => m a -> m a
-ntMapDatabaseErrors = mapException databaseErrors
- where
-  databaseErrors :: DatabaseError -> UsersError
-  databaseErrors _ = InternalError
-
 serverMain :: Int -> IO ()
 serverMain port = do
   run 8000
